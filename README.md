@@ -1,3 +1,4 @@
+## About: 
 Vela is An AI-powered career co-pilot that intelligently reframes your professional history into tailored resumes and cover letters for any role
 
 Try the app: https://vela-1045019688858.us-west1.run.app/
