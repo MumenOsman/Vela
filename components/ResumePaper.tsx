@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ResumeData } from '../types';
 
@@ -9,7 +10,7 @@ export const renderResumeToHTML = (data: ResumeData): string => {
 
   return `
     <div class="resume-paper font-serif" style="width: 100%; height: auto; padding: 20mm; background: white; box-sizing: border-box; overflow: hidden; display: block; margin: 0;">
-      <!-- Header - Compact, Hyperlinked & Polished -->
+      <!-- Header -->
       <div class="text-center mb-4">
         <h1 class="text-2xl font-bold uppercase tracking-widest text-slate-900 mb-0.5" style="margin: 0;">${personalInfo.name}</h1>
         <p class="text-md font-semibold text-blue-700 mb-2 uppercase tracking-tight" style="margin: 0;">${personalInfo.title}</p>
@@ -23,13 +24,13 @@ export const renderResumeToHTML = (data: ResumeData): string => {
         </div>
       </div>
 
-      <!-- Summary - Compact -->
+      <!-- Summary -->
       <div class="mb-4">
         <h2 class="text-sm font-bold text-slate-800 border-b border-slate-800 mb-1.5 uppercase tracking-wider">Professional Summary</h2>
         <p class="text-slate-700 text-[12px] leading-snug">${summary}</p>
       </div>
 
-      <!-- Experience - Compact -->
+      <!-- Experience -->
       <div class="mb-4">
         <h2 class="text-sm font-bold text-slate-800 border-b border-slate-800 mb-2 uppercase tracking-wider">Professional Experience</h2>
         ${experience.map(exp => `
@@ -46,35 +47,32 @@ export const renderResumeToHTML = (data: ResumeData): string => {
         `).join('')}
       </div>
 
-      <!-- Skills & Languages - Compact 3-Row Block -->
+      <!-- Skills & Expertise -->
       <div class="mb-4">
         <h2 class="text-sm font-bold text-slate-800 border-b border-slate-800 mb-2 uppercase tracking-wider">Skills & Expertise</h2>
         <div class="flex flex-col gap-1.5 font-sans">
-          <!-- Row 1: Technical -->
           <div class="flex items-start gap-2">
             <span class="text-[10px] font-bold text-slate-500 uppercase min-w-[100px] mt-0.5 whitespace-nowrap">Technical:</span>
             <div class="flex flex-wrap gap-1">
               ${skills.technical.map(skillItem).join('')}
             </div>
           </div>
-          <!-- Row 2: Soft -->
           <div class="flex items-start gap-2">
             <span class="text-[10px] font-bold text-slate-500 uppercase min-w-[100px] mt-0.5 whitespace-nowrap">Professional:</span>
             <div class="flex flex-wrap gap-1">
               ${skills.soft.map(skillItem).join('')}
             </div>
           </div>
-          <!-- Row 3: Languages -->
           <div class="flex items-start gap-2">
             <span class="text-[10px] font-bold text-slate-500 uppercase min-w-[100px] mt-0.5 whitespace-nowrap">Languages:</span>
             <div class="flex flex-wrap gap-1">
-              ${languages.map(lang => `<span class="text-[10px] text-slate-700">${lang}</span>`).join('<span class="text-slate-300 text-[10px] mx-1">|</span>')}
+              ${languages.map(skillItem).join('')}
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Education - Compact -->
+      <!-- Education -->
       <div class="mb-2">
         <h2 class="text-sm font-bold text-slate-800 border-b border-slate-800 mb-1.5 uppercase tracking-wider">Education</h2>
         ${education.map(edu => `

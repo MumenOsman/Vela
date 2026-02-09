@@ -1,10 +1,11 @@
-import React, { useRef, useEffect } from 'react';
-import { Download, Edit3, Sparkles, Wand2 } from 'lucide-react';
+
+import React, { useRef, useEffect, useState } from 'react';
+import { Download, Edit3, Sparkles, Wand2, Send } from 'lucide-react';
 
 interface WorkspaceProps {
   content: string;
   onContentChange: (newContent: string) => void;
-  onPolish: () => void;
+  onPolish: (instruction: string) => void;
   title: string;
   isGenerating: boolean;
   isPolishing: boolean;
@@ -21,6 +22,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   viewType
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
+  const [refineInstruction, setRefineInstruction] = useState('');
 
   useEffect(() => {
     if (editorRef.current && content !== editorRef.current.innerHTML) {
@@ -111,10 +113,17 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     onContentChange(e.currentTarget.innerHTML);
   };
 
+  const handleRefineSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!refineInstruction.trim()) return;
+    onPolish(refineInstruction);
+    setRefineInstruction('');
+  };
+
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap justify-between items-center bg-white dark:bg-vela-dark-surface p-6 rounded-2xl border border-vela-light-border dark:border-vela-dark-border shadow-sm sticky top-4 z-10 no-print gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white dark:bg-vela-dark-surface p-6 rounded-2xl border border-vela-light-border dark:border-vela-dark-border shadow-sm sticky top-4 z-10 no-print gap-6">
+        <div className="flex items-center gap-4 shrink-0">
           <div className="p-2.5 bg-blue-50 dark:bg-blue-900/10 text-blue-500 rounded-xl">
             <Edit3 size={18} />
           </div>
@@ -123,19 +132,34 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Click any text to edit manually</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onPolish}
-            disabled={!content || isGenerating || isPolishing}
-            className="flex items-center gap-2 bg-vela-light-surface dark:bg-vela-dark border border-vela-light-border dark:border-vela-dark-border text-slate-700 dark:text-slate-300 px-5 py-2.5 rounded-xl font-medium uppercase text-[11px] tracking-wider transition-all hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50"
+
+        <div className="flex flex-1 flex-col md:flex-row items-center gap-3 w-full lg:w-auto">
+          <form 
+            onSubmit={handleRefineSubmit}
+            className="flex-1 w-full flex items-center gap-2 bg-vela-light-surface dark:bg-vela-dark border border-vela-light-border dark:border-vela-dark-border rounded-xl px-4 h-11 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all"
           >
-            <Wand2 size={16} className={`${isPolishing ? 'animate-pulse' : ''} text-blue-500`} />
-            {isPolishing ? 'Perfecting...' : 'Refine Text'}
-          </button>
+            <Wand2 size={16} className="text-blue-500 shrink-0" />
+            <input 
+              type="text"
+              placeholder="Refinement instruction (e.g. shorten summary)"
+              className="bg-transparent border-none outline-none text-xs text-vela-light-text dark:text-vela-dark-text w-full py-2 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+              value={refineInstruction}
+              onChange={(e) => setRefineInstruction(e.target.value)}
+              disabled={isPolishing || isGenerating}
+            />
+            <button 
+              type="submit"
+              disabled={isPolishing || isGenerating || !content || !refineInstruction.trim()}
+              className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 rounded-lg transition-colors disabled:opacity-30 shrink-0"
+            >
+              <Send size={14} />
+            </button>
+          </form>
+
           <button
             onClick={handleDownloadPDF}
             disabled={!content || isGenerating || isPolishing}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl font-medium uppercase text-[11px] tracking-wider transition-all shadow-md active:scale-95 disabled:opacity-50"
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 h-11 rounded-xl font-medium uppercase text-[11px] tracking-wider transition-all shadow-md active:scale-95 disabled:opacity-50 whitespace-nowrap shrink-0 min-w-[140px]"
           >
             <Download size={16} /> Save PDF
           </button>
@@ -150,7 +174,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             </div>
             <div className="text-center">
               <p className="text-xl font-semibold text-vela-light-text dark:text-vela-dark-text mb-2">
-                {isPolishing ? 'Elevating tone...' : `Generating ${title}...`}
+                {isPolishing ? 'Refining content...' : `Generating ${title}...`}
               </p>
               <p className="text-[11px] text-blue-500 dark:text-blue-400 font-medium uppercase tracking-[0.2em]">
                 Processing keywords

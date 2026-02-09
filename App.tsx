@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { FileText, Mail, ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react';
 import { JobInput } from './components/JobInput';
@@ -128,12 +129,12 @@ const App: React.FC = () => {
     }
   };
 
-  const handlePolish = async () => {
+  const handlePolish = async (instruction: string) => {
     if (!state.generatedContent || !state.jobDescription) return;
 
     setIsPolishing(true);
     try {
-      const polished = await polishContent(state.generatedContent, state.jobDescription);
+      const polished = await polishContent(state.generatedContent, state.jobDescription, instruction);
       setState(prev => ({ ...prev, generatedContent: sanitizeAIResponse(polished) }));
     } catch (error) {
       console.error("Polishing failed:", error);

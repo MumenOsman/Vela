@@ -2,19 +2,24 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, FileData, ExternalLink } from "../types";
 
-const SYSTEM_INSTRUCTION = `You are a Senior Resume Writer and Career Coach. 
-When rewriting resumes:
-1. Analyze the Job Description to identify the top 3-5 required skills/keywords.
-2. Treat the user's provided information as a 'database of facts'. Completely rewrite bullet points to align with the job requirements using the STAR method (Situation, Task, Action, Result). 
-3. Focus on metrics, optimization, and quantifiable achievements.
-4. REORDER and SELECT: Do not simply list every skill the user has. Analyze the Job Description. Select only the top 8-10 'Hard Skills' and 4-5 'Soft Skills' that directly match the job requirements. Rewrite them if necessary to match keywords used in the job ad.
-5. Prioritize the most relevant items for the specific job.
-6. Use professional, high-impact action verbs.
+const SYSTEM_INSTRUCTION = `You are a World-Class Executive Resume Writer and Career Strategist.
 
-When writing cover letters:
-Avoid robotic intros. Be direct, enthusiastic, and professional, specifically connecting the user's "database of facts" to the company's needs. Use semantic HTML for output.
+STRICT CORE RULE: DO NOT FABRICATE DATA. Only use facts, skills, and experiences present in the source data.
 
-IMPORTANT: Return the content as raw text/markdown only. Do NOT enclose it in markdown code fences (no \`\`\`). Do not include \`\`\`html or any other prefix.`;
+STRATEGIC OBJECTIVE:
+Your goal is to "bridge" the user's history to the specific Job Description (JD) without lying.
+
+1. PROFESSIONAL TITLE: Set 'personalInfo.title' to the user's ACTUAL most recent or most relevant professional title found in the source data. You may refine it slightly for professional clarity (e.g., "Software Developer" to "Senior Software Engineer" if the seniority is evident), but DO NOT change it to a role the user has never held.
+2. TAILORED SUMMARY: 
+   - If the user is changing fields: Explicitly frame the summary to highlight their background in [Source Field] and how their specific transferable skills (from source data) solve the needs of [Target Field/JD].
+   - Focus on the intersection of the user's real achievements and the company's requirements.
+3. EXPERIENCE TAILORING: 
+   - Rephrase existing bullets to use keywords from the JD, but keep the underlying actions and results 100% factual.
+   - Use the STAR method with quantified metrics only if they exist in the source.
+4. LINKS: DO NOT INVENT LINKS. If the user provided no URLs or social links in the source data, the 'links' array MUST be empty. Never use "linkedin.com/in/username" or placeholder text.
+5. SKILL SELECTION: Select 8-10 'Hard Skills' and 4-5 'Soft Skills' found ONLY in the source data that overlap with the JD.
+
+IMPORTANT: Return the content as raw text/markdown only. Do NOT enclose it in markdown code fences.`;
 
 const RESUME_SCHEMA = {
   type: Type.OBJECT,
@@ -23,7 +28,10 @@ const RESUME_SCHEMA = {
       type: Type.OBJECT,
       properties: {
         name: { type: Type.STRING },
-        title: { type: Type.STRING },
+        title: { 
+          type: Type.STRING, 
+          description: "The user's actual professional title derived from their work history. Do not invent a new title they have never held." 
+        },
         contact: {
           type: Type.OBJECT,
           properties: {
@@ -35,11 +43,12 @@ const RESUME_SCHEMA = {
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  label: { type: Type.STRING, description: "e.g. LinkedIn, Portfolio, GitHub" },
+                  label: { type: Type.STRING },
                   url: { type: Type.STRING }
                 },
                 required: ["label", "url"]
-              }
+              },
+              description: "Include ONLY links provided in the source data. If none are provided, return an empty array []."
             }
           },
           required: ["email", "phone", "location", "links"]
@@ -47,12 +56,15 @@ const RESUME_SCHEMA = {
       },
       required: ["name", "title", "contact"]
     },
-    summary: { type: Type.STRING },
+    summary: { 
+      type: Type.STRING, 
+      description: "A professional summary that honestly bridges the user's real background to the job's needs. If changing fields, highlight transferable skills." 
+    },
     skills: {
       type: Type.OBJECT,
       properties: {
-        technical: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Curated top 8-10 hard skills matching JD" },
-        soft: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Curated top 4-5 soft skills matching JD" },
+        technical: { type: Type.ARRAY, items: { type: Type.STRING } },
+        soft: { type: Type.ARRAY, items: { type: Type.STRING } },
       },
       required: ["technical", "soft"]
     },
@@ -65,7 +77,11 @@ const RESUME_SCHEMA = {
           role: { type: Type.STRING },
           company: { type: Type.STRING },
           dates: { type: Type.STRING },
-          bullets: { type: Type.ARRAY, items: { type: Type.STRING } },
+          bullets: { 
+            type: Type.ARRAY, 
+            items: { type: Type.STRING },
+            description: "Actual experience bullets rephrased for JD alignment using STAR method."
+          },
         },
         required: ["role", "company", "dates", "bullets"]
       }
@@ -98,29 +114,37 @@ export const generateTailoredContent = async (
   let parts: any[] = [];
 
   if ('data' in profileData) {
-    // Upload mode
     parts.push({
       inlineData: {
         data: profileData.data,
         mimeType: profileData.mimeType,
       },
     });
-    parts.push({ text: "Attached is the user's current resume as a PDF file." });
-    if (links && links.length > 0) {
-      parts.push({ text: `Additional User Links: ${JSON.stringify(links)}` });
-    }
+    parts.push({ text: "SOURCE DATA: Attached Resume File." });
   } else {
-    // Form mode
-    parts.push({ text: `User Detailed Profile: ${JSON.stringify(profileData)}` });
+    parts.push({ text: `SOURCE DATA: ${JSON.stringify(profileData)}` });
+  }
+
+  // Explicitly pass provided links to ensure they are the only ones used
+  if (links && links.length > 0) {
+    parts.push({ text: `AUTHORIZED LINKS: ${JSON.stringify(links.map(l => ({ label: l.label, url: l.url })))}` });
+  } else {
+    parts.push({ text: "NO AUTHORIZED LINKS PROVIDED. The links array in the output must be empty." });
   }
 
   const promptText = type === 'resume' 
-    ? `Tailor a high-impact resume for this job description. 
-       Job Description: ${jobDescription}
-       Instruction: Return a JSON object with tailored resume content following the schema. Analyze the JD, prioritize top keywords, curated skills (8-10 hard, 4-5 soft), and rewrite bullets for maximum impact and relevance.`
-    : `Write a persuasive, high-level cover letter for the following job.
-       Job Description: ${jobDescription}
-       Instruction: Return a professional cover letter in semantic HTML format. Direct impact, enthusiastic tone. Do NOT use markdown code fences.`;
+    ? `TASK: Tailor a resume for this job description.
+       TARGET JOB: ${jobDescription}
+       
+       MANDATE: 
+       - Title must be the user's REAL role from work history.
+       - Summary should bridge their background to the target job (transferable skills).
+       - NO DUMMY LINKS.
+       - NO FABRICATION.
+       - Return JSON following the schema.`
+    : `TASK: Write a cover letter for this job.
+       TARGET JOB: ${jobDescription}
+       MANDATE: Honestly connect user's source experience to the job's requirements. Use semantic HTML.`;
 
   parts.push({ text: promptText });
 
@@ -130,7 +154,7 @@ export const generateTailoredContent = async (
       contents: { parts },
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.7,
+        temperature: 0.2, // Lower temperature for higher factual precision
         ...(type === 'resume' ? {
           responseMimeType: "application/json",
           responseSchema: RESUME_SCHEMA
@@ -147,31 +171,37 @@ export const generateTailoredContent = async (
 
 export const polishContent = async (
   content: string,
-  jobDescription: string
+  jobDescription: string,
+  userInstruction?: string
 ): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
   const model = 'gemini-3-flash-preview';
 
-  const prompt = `Review the following document content (in HTML format). 
-  Job Context: ${jobDescription}
+  const prompt = `You are an expert HTML editor. 
   
-  Content to Refine: 
+  CONTEXT: The user is applying for this job: ${jobDescription}
+  USER INSTRUCTION: ${userInstruction || "Improve the tone and clarity of this professional document."}
+
+  CONTENT TO EDIT (HTML):
   ${content}
 
-  Instruction: 
-  1. Review the user's document and any manual edits.
-  2. Correct any grammar errors.
-  3. Elevate the tone to be more professional, executive, and impactful.
-  4. DO NOT change the core facts or metrics.
-  5. Return the exact same HTML structure but with polished text content. Do not add markdown backticks.`;
+  RULES:
+  1. DO NOT change the HTML structure, classes, or layout.
+  2. ONLY edit the text content inside the tags.
+  3. Keep all <span>, <div>, <ul>, and <li> tags exactly where they are.
+  4. DO NOT add markdown code blocks (like \`\`\`html) to the output.
+  5. Return ONLY the raw refined HTML string.
+  6. If the user instruction is to "shorten", make the text more concise while keeping the impact.
+  7. If the user instruction is "make more professional", elevate the vocabulary.
+  8. NO FABRICATION: Do not add skills or links not already present in the content.`;
 
   try {
     const response = await ai.models.generateContent({
       model: model,
       contents: prompt,
       config: {
-        systemInstruction: "You are an executive editor. Your goal is to refine text for clarity, impact, and professionalism while maintaining the provided HTML structure.",
-        temperature: 0.4,
+        systemInstruction: "Executive HTML content editor. Refine text impact without breaking layout or fabricating facts.",
+        temperature: 0.1,
       },
     });
 
