@@ -1,0 +1,5 @@
+{
+  "name": "Vela",
+  "description": "An AI-powered career assistant that tailors your resume and generates professional cover letters based on job descriptions using Google Gemini.",
+  "requestFramePermissions": []
+}
